@@ -59,7 +59,8 @@ def logger(is_timed: bool):
                     end - start,
                 )
             else:
-                log.debug("Exiting %s with return value %s", func.__name__, out)
+                log.debug("Exiting %s with return value %s",
+                          func.__name__, out)
 
             return out
 
@@ -153,7 +154,8 @@ class Chatbot:
                 os.mkdir(osp.join(user_home, ".config"))
             if not osp.exists(osp.join(user_home, ".config", "revChatGPT")):
                 os.mkdir(osp.join(user_home, ".config", "revChatGPT"))
-            self.cache_path = osp.join(user_home, ".config", "revChatGPT", "cache.json")
+            self.cache_path = osp.join(
+                user_home, ".config", "revChatGPT", "cache.json")
 
         self.config = config
         self.session = session_client() if session_client else requests.Session()
@@ -172,8 +174,8 @@ class Chatbot:
             if not isinstance(config["proxy"], str):
                 raise Exception("Proxy must be a string!")
             proxies = {
-                "http": config["proxy"],
-                "https": config["proxy"],
+                "http://": config["proxy"],
+                "https://": config["proxy"],
             }
             if isinstance(self.session, AsyncClient):
                 self.session = AsyncClient(proxies=proxies)
@@ -266,7 +268,8 @@ class Chatbot:
                 # Split access_token into 3 parts
                 s_access_token = access_token.split(".")
                 # Add padding to the middle part
-                s_access_token[1] += "=" * ((4 - len(s_access_token[1]) % 4) % 4)
+                s_access_token[1] += "=" * \
+                    ((4 - len(s_access_token[1]) % 4) % 4)
                 d_access_token = base64.b64decode(s_access_token[1])
                 d_access_token = json.loads(d_access_token)
             except base64.binascii.Error:
@@ -399,7 +402,8 @@ class Chatbot:
         parent_id = parent_id or self.parent_id
         if conversation_id is None and parent_id is None:
             parent_id = str(uuid.uuid4())
-            log.debug("New conversation, setting parent_id to new UUID4: %s", parent_id)
+            log.debug(
+                "New conversation, setting parent_id to new UUID4: %s", parent_id)
 
         if conversation_id is not None and parent_id is None:
             if conversation_id not in self.conversation_mapping:
@@ -444,9 +448,7 @@ class Chatbot:
             ],
             "conversation_id": conversation_id,
             "parent_message_id": parent_id,
-            "model": "text-davinci-002-render-sha"
-            if not self.config.get("paid")
-            else "text-davinci-002-render-paid",
+            "model": self.config.get("model", "text-davinci-002-render-sha")
         }
         log.debug("Sending the payload")
         log.debug(json.dumps(data, indent=2))
@@ -489,7 +491,8 @@ class Chatbot:
                     == "Too many requests in 1 hour. Try again later."
                 ):
                     log.error("Rate limit exceeded")
-                    raise Error(source="ask", message=line.get("detail"), code=2)
+                    raise Error(
+                        source="ask", message=line.get("detail"), code=2)
                 if line.get("detail", {}).get("code") == "invalid_api_key":
                     log.error("Invalid access token")
                     raise Error(
@@ -599,7 +602,8 @@ class Chatbot:
         response = self.session.post(
             BASE_URL + f"api/conversation/gen_title/{convo_id}",
             data=json.dumps(
-                {"message_id": message_id, "model": "text-davinci-002-render"},
+                {"message_id": message_id,
+                 "model": self.config.get("model", "text-davinci-002-render-sha")},
             ),
         )
         self.__check_response(response)
@@ -662,7 +666,6 @@ class Chatbot:
             self.conversation_id = self.conversation_id_prev_queue.pop()
             self.parent_id = self.parent_id_prev_queue.pop()
 
-
 class AsyncChatbot(Chatbot):
     """
     Async Chatbot class for ChatGPT
@@ -721,9 +724,7 @@ class AsyncChatbot(Chatbot):
             ],
             "conversation_id": conversation_id,
             "parent_message_id": parent_id,
-            "model": "text-davinci-002-render-sha"
-            if not self.config.get("paid")
-            else "text-davinci-002-render-paid",
+            "model": self.config.get("model", "text-davinci-002-render-sha")
         }
 
         self.conversation_id_prev_queue.append(
@@ -806,7 +807,10 @@ class AsyncChatbot(Chatbot):
         response = await self.session.post(
             url,
             data=json.dumps(
-                {"message_id": message_id, "model": "text-davinci-002-render"},
+                {
+                    "message_id": message_id,
+                    "model": self.config.get("model", "text-davinci-002-render")
+                },
             ),
         )
         await self.__check_response(response)
@@ -953,7 +957,7 @@ def main(config: dict):
         print(bcolors.OKGREEN + bcolors.BOLD + "Chatbot: ")
         prev_text = ""
         for data in chatbot.ask(prompt):
-            message = data["message"][len(prev_text) :]
+            message = data["message"][len(prev_text):]
             print(message, end="", flush=True)
             prev_text = data["message"]
         print(bcolors.ENDC)
